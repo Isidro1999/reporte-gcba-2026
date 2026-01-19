@@ -97,24 +97,36 @@ div[data-baseweb="select"] {
     background-color: #5B0C11 !important;
 }
 
-/* KPI CARDS */
+/* KPI CUSTOM */
 .kpi-card {
-    padding: 15px;
+    padding: 22px 18px;
     background-color: #800008;
-    border-radius: 12px;
+    border-radius: 14px;
     border: 1px solid #5B0C11;
-    text-align: center;
-    margin-bottom: 10px;
+    text-align: left;
 }
+
 .kpi-title {
-    font-size: 16px;
+    font-size: 22px;
     color: #D3D3D3;
+    font-weight: 600;
+    margin-bottom: 8px;
 }
+
 .kpi-value {
-    font-size: 26px;
-    font-weight: bold;
+    font-size: 56px;
+    font-weight: 900;
     color: #FFFFFF;
+    line-height: 1;
 }
+
+
+/* delta (por si aparece) */
+div[data-testid="metric-container"] [data-testid="stMetricDelta"]{
+    font-size: 16px !important;
+}
+
+
 
 /* FOOTER */
 .footer {
@@ -124,6 +136,17 @@ div[data-baseweb="select"] {
     color: #AAAAAA;
     font-size: 14px;
 }
+            
+/* TABS / CATEGORÍAS (fallback) */
+div[data-testid="stTabs"] button,
+div[data-testid="stTabs"] [role="tab"],
+div[data-testid="stTabs"] p,
+div[data-testid="stTabs"] span {
+    font-size: 18px !important;
+}
+
+
+
 
 </style>
 """, unsafe_allow_html=True)
@@ -178,7 +201,26 @@ def load_data():
     df["Subtipos_material"] = df["Tags_list"].apply(extraer_subtipos)
     return df
 
+
+@st.cache_data
+def load_bandas_catalogo():
+    df_bandas = pd.read_csv("data/bandas_por_catalogo.csv")
+    df_bandas["Catálogo"] = df_bandas["Catálogo"].astype(str).str.strip()
+    df_bandas["Cantidad de Bandas"] = pd.to_numeric(df_bandas["Cantidad de Bandas"], errors="coerce").fillna(0).astype(int)
+    return df_bandas
+
+df_bandas = load_bandas_catalogo()
+
 df = load_data()
+
+MAPEO_EJES = {
+    "Cuidado y Bien Público": "Cuidado",
+    "Desarrollo": "Reforma y Modernización del estado",
+    "Encuentro": "Ciudad Atractiva",
+    "Obras": "Movilidad",
+    "Orden": "Orden, Seguridad y Limpieaza",
+}
+
 
 # Fechas
 fecha_max = df["Fecha"].max()
@@ -204,8 +246,11 @@ rango_fechas = st.sidebar.date_input(
 inicio, fin = rango_fechas
 
 
-ejes_disp = sorted(df["Eje"].unique())
+df["Eje_display"] = df["Eje"].map(MAPEO_EJES).fillna(df["Eje"])
+
+ejes_disp = sorted(df["Eje_display"].unique())
 ejes_sel = st.sidebar.multiselect("Ejes", ejes_disp, default=ejes_disp)
+
 
 tipos_disp = sorted(df["Tipo de material"].unique())
 tipos_sel = st.sidebar.multiselect("Tipo de material", tipos_disp, default=tipos_disp)
@@ -216,20 +261,37 @@ subtipos_sel = st.sidebar.multiselect("Subtipos", subtipos_disp, default=subtipo
 mask = (
     (df["Fecha"].dt.date >= inicio) &
     (df["Fecha"].dt.date <= fin) &
-    (df["Eje"].isin(ejes_sel)) &
+    (df["Eje_display"].isin(ejes_sel)) &
     (df["Tipo de material"].isin(tipos_sel))
 )
 
 df_filtrado = df[mask].copy()
+df_filtrado["Eje_display"] = (
+    df_filtrado["Eje"]
+    .map(MAPEO_EJES)
+    .fillna(df_filtrado["Eje"])
+)
+
 
 # =====================================================
 # 3. KPIs
 # =====================================================
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total materiales", f"{len(df_filtrado):,}".replace(",", "."))
-col2.metric("Ejes activos", df_filtrado["Eje"].nunique())
-col3.metric("Comunas alcanzadas", df_filtrado["Comuna"].nunique())
-col4.metric("Último mes cargado", df_filtrado["Fecha"].max().strftime("%m/%Y"))
+
+def kpi_html(titulo, valor):
+    return f"""
+    <div class="kpi-card">
+        <div class="kpi-title">{titulo}</div>
+        <div class="kpi-value">{valor}</div>
+    </div>
+    """
+
+col1.markdown(kpi_html("Total materiales", f"{len(df_filtrado):,}".replace(",", ".")), unsafe_allow_html=True)
+col2.markdown(kpi_html("Ejes activos", df_filtrado["Eje"].nunique()), unsafe_allow_html=True)
+col3.markdown(kpi_html("Comunas alcanzadas", df_filtrado["Comuna"].nunique()), unsafe_allow_html=True)
+col4.markdown(kpi_html("Último mes cargado", df_filtrado["Fecha"].max().strftime("%m/%Y")), unsafe_allow_html=True)
+
+
 
 st.markdown("---")
 
@@ -237,7 +299,7 @@ st.markdown("---")
 # 4. TABS
 # =====================================================
 tab_resumen, tab_ejes, tab_territorio, tab_materiales, tab_insights = st.tabs([
-    "📌 Resumen", "🏛️ Ejes & Temas", "🗺️ Territorio", "🎥 Materiales", "🧠 Insights"
+    "📌 Resumen", "🏛️ Gráfico Interactivo", "🗺️ Mapa por comunas", "🎥 Materiales", "🧠 Insights"
 ])
 
 # -----------------------------------------------------
@@ -246,14 +308,61 @@ tab_resumen, tab_ejes, tab_territorio, tab_materiales, tab_insights = st.tabs([
 with tab_resumen:
     st.subheader("Distribución general por Eje")
 
-    df_eje = df_filtrado.groupby("Eje").size().reset_index(name="Cantidad")
-    fig_eje = aplicar_tema_plotly(px.bar(df_eje, x="Eje", y="Cantidad", text="Cantidad"))
+    df_eje = df_filtrado.groupby("Eje_display").size().reset_index(name="Cantidad")
+    fig_eje = aplicar_tema_plotly(px.bar(df_eje, x="Eje_display", y="Cantidad", text="Cantidad"))
+
+    fig_eje.update_yaxes(title_text="Cantidad de materiales")
     st.plotly_chart(fig_eje, use_container_width=True)
 
-    st.subheader("Evolución mensual total")
-    df_mes = df_filtrado.groupby("Fecha").size().reset_index(name="Cantidad")
+    st.subheader("Evolución de carga Mensual")
+    # Evolución mensual total (con todos los meses)
+    df_mes = df_filtrado.groupby("Fecha").size().rename("Cantidad")
+
+    # Armamos el rango completo de meses según filtro
+    start = pd.to_datetime(inicio).to_period("M").to_timestamp()
+    end = pd.to_datetime(fin).to_period("M").to_timestamp()
+
+    # Evitar meses anteriores a 2024-01
+    start_min = pd.Timestamp("2024-01-01")
+    if start < start_min:
+        start = start_min
+
+    idx = pd.date_range(start=start, end=end, freq="MS")
+
+    df_mes = df_mes.reindex(idx, fill_value=0).reset_index().rename(columns={"index": "Fecha"})
+
     fig_total = aplicar_tema_plotly(px.line(df_mes, x="Fecha", y="Cantidad", markers=True))
+    fig_total.update_yaxes(title_text="Cantidad de materiales")
+
+    # Fuerza ticks mensuales
+    fig_total.update_xaxes(
+        dtick="M1",
+        tickformat="%b %Y"   # Jan 2024, Feb 2024, ...
+    )
+
     st.plotly_chart(fig_total, use_container_width=True)
+
+    st.subheader("Bandas por Catálogo")
+
+    df_b = df_bandas.sort_values("Cantidad de Bandas", ascending=False)
+
+    fig_bandas = aplicar_tema_plotly(
+        px.bar(
+            df_b,
+            x="Catálogo",
+            y="Cantidad de Bandas",
+            text="Cantidad de Bandas"
+        )
+    )
+
+    fig_bandas.update_traces(textposition="outside", cliponaxis=False)
+    fig_bandas.update_yaxes(title_text="Cantidad de bandas")
+    fig_bandas.update_xaxes(title_text="Catálogo")
+
+    st.plotly_chart(fig_bandas, use_container_width=True)
+
+
+
 
 # -----------------------------------------------------
 # 🟩 TAB EJES & TEMAS
@@ -261,17 +370,44 @@ with tab_resumen:
 with tab_ejes:
 
     # Sunburst
-    st.subheader("Jerarquía Eje → SubEje → Tema → Subtema")
-    df_h = df_filtrado[["Eje", "Sub Eje", "Tema", "Subtema"]].fillna("Sin dato")
+    st.subheader("Etiqueta --> Ruta --> Cantidad")
+    df_h = df_filtrado[["Eje_display", "Sub Eje", "Tema", "Subtema"]].fillna("Sin dato")
+
     fig_sun = aplicar_tema_plotly(
-        px.sunburst(df_h, path=["Eje", "Sub Eje", "Tema", "Subtema"])
+        px.sunburst(df_h, path=["Eje_display", "Sub Eje", "Tema", "Subtema"])
     )
+    
+
+    fig_sun.update_traces(
+    hovertemplate=
+        "<b>Etiqueta:</b> %{label}<br>" +
+        "<b>Ruta:</b> %{id}<br>" +
+        "<b>Cantidad:</b> %{value}<br>" +
+        "<extra></extra>"
+)
+
+
+    fig_sun.update_layout(
+    height=550,                 # probá 800–950
+    margin=dict(l=10, r=10, t=10, b=10)
+)
+
     st.plotly_chart(fig_sun, use_container_width=True)
 
     # Evolución por eje
     st.subheader("Evolución mensual por Eje")
-    df_eje_tiempo = df_filtrado.groupby(["Fecha", "Eje"]).size().reset_index(name="Cantidad")
-    fig_eje_tiempo = aplicar_tema_plotly(px.line(df_eje_tiempo, x="Fecha", y="Cantidad", color="Eje", markers=True))
+
+    df_eje_tiempo = (
+        df_filtrado
+        .groupby(["Fecha", "Eje_display"])
+        .size()
+        .reset_index(name="Cantidad")
+    )
+
+    fig_eje_tiempo = aplicar_tema_plotly(
+     px.line(df_eje_tiempo, x="Fecha", y="Cantidad", color="Eje_display", markers=True)
+    )
+
     st.plotly_chart(fig_eje_tiempo, use_container_width=True)
 
     # Top subejes
@@ -282,10 +418,34 @@ with tab_ejes:
 
     # Heatmaps
     st.subheader("Heatmap — Eje vs Mes")
-    df_heat_eje = df_filtrado.groupby(["Eje", "Mes_num"]).size().reset_index(name="Cantidad")
-    heat_eje = df_heat_eje.pivot(index="Eje", columns="Mes_num", values="Cantidad")
-    fig_heat1 = aplicar_tema_plotly(px.imshow(heat_eje, color_continuous_scale="Blues"))
+
+    df_heat_eje = (
+        df_filtrado
+        .groupby(["Eje_display", "Mes_num"])
+        .size()
+        .reset_index(name="Cantidad")
+    )
+
+    heat_eje = df_heat_eje.pivot(
+        index="Eje_display",
+        columns="Mes_num",
+            values="Cantidad"
+)
+
+    fig_heat1 = aplicar_tema_plotly(
+        px.imshow(
+            heat_eje,
+            color_continuous_scale="Blues",
+            labels=dict(
+                x="Mes",
+                y="Eje",
+                color="Cantidad"
+        )
+    )
+)
+
     st.plotly_chart(fig_heat1, use_container_width=True)
+
 
     st.subheader("Heatmap — SubEje vs Mes")
     df_heat_subeje = df_filtrado.groupby(["Sub Eje", "Mes_num"]).size().reset_index(name="Cantidad")
@@ -295,13 +455,26 @@ with tab_ejes:
 
     # YoY
     st.subheader("Comparativa Año vs Año por Eje (YoY)")
-    ejes_yoy_disponibles = sorted(df_filtrado["Eje"].unique())
+    ejes_yoy_disponibles = (
+        df_filtrado[["Eje", "Eje_display"]]
+        .drop_duplicates()
+        .sort_values("Eje_display")
+    )
 
-    eje_yoy = st.selectbox(
+    
+
+    eje_yoy_display = st.selectbox(
         "Seleccioná un Eje:",
-        options=ejes_yoy_disponibles,
+        options=ejes_yoy_disponibles["Eje_display"].tolist(),
         index=0
     )
+
+    eje_yoy = ejes_yoy_disponibles.loc[
+        ejes_yoy_disponibles["Eje_display"] == eje_yoy_display,
+        "Eje"
+    ].iloc[0]
+
+
 
     df_yoy = df_filtrado[df_filtrado["Eje"] == eje_yoy]
     df_yoy = df_yoy.groupby(["Año", "Mes_num"]).size().reset_index(name="Cantidad")
@@ -317,12 +490,7 @@ with tab_ejes:
 # 🟧 TAB TERRITORIO
 # -----------------------------------------------------
 with tab_territorio:
-
-    st.subheader("Materiales por Comuna")
-
-    df_com = df_filtrado.groupby("Comuna").size().reset_index(name="Cantidad")
-    fig_com = aplicar_tema_plotly(px.bar(df_com, x="Comuna", y="Cantidad", text="Cantidad"))
-    st.plotly_chart(fig_com, use_container_width=True)
+    
 
     st.subheader("Mapa territorial")
 
@@ -352,6 +520,18 @@ with tab_territorio:
     except Exception as e:
         st.error("No se pudo cargar el mapa")
         st.code(str(e))
+
+    st.subheader("Materiales por Comuna")
+
+    df_com = df_filtrado.groupby("Comuna").size().reset_index(name="Cantidad")
+    fig_com = aplicar_tema_plotly(px.bar(df_com, x="Comuna", y="Cantidad", text="Cantidad"))
+    fig_com.update_xaxes(
+    tickmode="linear",
+    dtick=1
+)
+
+    st.plotly_chart(fig_com, use_container_width=True)
+
 
 # -----------------------------------------------------
 # 🟪 TAB MATERIALES
