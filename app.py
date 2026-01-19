@@ -202,6 +202,8 @@ def load_data():
     return df
 
 
+
+
 @st.cache_data
 def load_bandas_catalogo():
     df_bandas = pd.read_csv("data/bandas_por_catalogo.csv")
@@ -212,6 +214,8 @@ def load_bandas_catalogo():
 df_bandas = load_bandas_catalogo()
 
 df = load_data()
+df = df.dropna(subset=["Eje", "Sub Eje", "Tema", "Subtema"])
+df = df[~df["Eje"].astype(str).str.strip().str.lower().isin(["nan", "none", ""])]
 
 MAPEO_EJES = {
     "Cuidado y Bien Público": "Cuidado",
@@ -371,11 +375,28 @@ with tab_ejes:
 
     # Sunburst
     st.subheader("Etiqueta --> Ruta --> Cantidad")
-    df_h = df_filtrado[["Eje_display", "Sub Eje", "Tema", "Subtema"]].fillna("Sin dato")
+
+    df_h = df_filtrado[["Eje_display", "Sub Eje", "Tema", "Subtema"]].copy()
+
+    REEMPLAZOS = {
+        "Eje_display": "Sin eje",
+        "Sub Eje": "Sin subeje",
+        "Tema": "Sin tema",
+        "Subtema": "Sin subtema"
+    }
+
+    for col, label in REEMPLAZOS.items():
+        df_h[col] = (
+            df_h[col]
+            .astype(str)
+            .str.strip()
+            .replace(["nan", "NaN", "None", ""], label)
+        )
 
     fig_sun = aplicar_tema_plotly(
         px.sunburst(df_h, path=["Eje_display", "Sub Eje", "Tema", "Subtema"])
     )
+
     
 
     fig_sun.update_traces(
