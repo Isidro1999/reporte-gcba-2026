@@ -316,6 +316,7 @@ with tab_resumen:
     fig_eje = aplicar_tema_plotly(px.bar(df_eje, x="Eje_display", y="Cantidad", text="Cantidad"))
 
     fig_eje.update_yaxes(title_text="Cantidad de materiales")
+    fig_eje.update_xaxes(title_text="Ejes")
     st.plotly_chart(fig_eje, use_container_width=True)
 
     st.subheader("Evolución de carga Mensual")
@@ -464,6 +465,8 @@ with tab_ejes:
         )
     )
 )
+    fig_heat1.update_xaxes(title_text="Mes")
+
 
     st.plotly_chart(fig_heat1, use_container_width=True)
 
@@ -472,6 +475,7 @@ with tab_ejes:
     df_heat_subeje = df_filtrado.groupby(["Sub Eje", "Mes_num"]).size().reset_index(name="Cantidad")
     heat_subeje = df_heat_subeje.pivot(index="Sub Eje", columns="Mes_num", values="Cantidad")
     fig_heat2 = aplicar_tema_plotly(px.imshow(heat_subeje, color_continuous_scale="Reds"))
+    fig_heat2.update_xaxes(title_text="Mes")
     st.plotly_chart(fig_heat2, use_container_width=True)
 
     # YoY
@@ -503,6 +507,8 @@ with tab_ejes:
     fig_yoy_single = aplicar_tema_plotly(
         px.line(df_yoy, x="Mes_num", y="Cantidad", color="Año", markers=True)
     )
+    fig_yoy_single.update_xaxes(title_text="Mes")
+
     st.plotly_chart(fig_yoy_single, use_container_width=True)
 
 
