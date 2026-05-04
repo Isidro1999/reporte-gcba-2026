@@ -529,18 +529,17 @@ with tab_ejes:
 # 🟧 TAB TERRITORIO
 # -----------------------------------------------------
 with tab_territorio:
-    
 
     st.subheader("Mapa territorial")
 
     import json
 
     try:
-     with open("data/comunas_caba.geojson", "r", encoding="utf-8") as f:
-        comunas_geojson = json.load(f)
+        with open("data/comunas_caba.geojson", "r", encoding="utf-8") as f:
+            comunas_geojson = json.load(f)
 
-    df_map = df_filtrado[df_filtrado["Comuna"].between(1, 15)]
-    df_map = df_map.groupby("Comuna").size().reset_index(name="Cantidad")
+        df_map = df_filtrado[df_filtrado["Comuna"].between(1, 15)]
+        df_map = df_map.groupby("Comuna").size().reset_index(name="Cantidad")
 
         fig_map = px.choropleth_mapbox(
             df_map,
@@ -552,13 +551,12 @@ with tab_territorio:
             zoom=10.3,
             mapbox_style="carto-positron"
         )
-        
+
         fig_map = aplicar_tema_plotly(fig_map)
         st.plotly_chart(fig_map, use_container_width=True)
 
     except Exception as e:
-        st.error("No se pudo cargar el mapa")
-        st.code(str(e))
+        st.error(f"Error cargando mapa: {e}")
 
     st.subheader("Materiales por Comuna")
 
