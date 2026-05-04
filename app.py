@@ -317,6 +317,7 @@ with tab_resumen:
 
     fig_eje.update_yaxes(title_text="Cantidad de materiales")
     fig_eje.update_xaxes(title_text="Ejes")
+    
     st.plotly_chart(fig_eje, use_container_width=True)
 
     st.subheader("Evolución de carga Mensual")
@@ -413,6 +414,9 @@ with tab_ejes:
     height=550,                 # probá 800–950
     margin=dict(l=10, r=10, t=10, b=10)
 )
+  
+
+
 
     st.plotly_chart(fig_sun, use_container_width=True)
 
