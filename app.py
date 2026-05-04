@@ -156,9 +156,13 @@ div[data-testid="stTabs"] span {
 # 1. CARGA Y PREPARACIÓN DE DATOS
 # =====================================================
 
+from pathlib import Path
+
+DATA_PATH = Path("data/df_final.csv")
+
 @st.cache_data
-def load_data():
-    df = pd.read_csv("data/df_final.csv")
+def load_data(file_mtime):
+    df = pd.read_csv(DATA_PATH)
 
     df["Eje"] = df["Eje"].astype(str).str.strip()
     df["Sub Eje"] = df["Sub Eje"].astype(str).str.strip()
