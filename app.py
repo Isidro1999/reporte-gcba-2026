@@ -533,25 +533,19 @@ with tab_territorio:
 
     st.subheader("Mapa territorial")
 
-    import geopandas as gpd
-    import json
+  import json
 
-    try:
-        gdf = gpd.read_file("data/comunas_caba.geojson")
-        gdf["comuna"] = gdf["comuna"].astype(int)
+try:
+    with open("data/comunas_caba.geojson", "r", encoding="utf-8") as f:
+        comunas_geojson = json.load(f)
 
-        df_map = (
-            df_filtrado[df_filtrado["Comuna"].between(1, 15)]
-            .groupby("Comuna")
-            .size()
-            .reset_index(name="Cantidad")
-        )
-        gdf_merge = gdf.merge(df_map, left_on="comuna", right_on="Comuna", how="left").fillna(0)
+    df_map = df_filtrado[df_filtrado["Comuna"].between(1, 15)]
+    df_map = df_map.groupby("Comuna").size().reset_index(name="Cantidad")
 
         fig_map = px.choropleth_mapbox(
             gdf_merge,
-            geojson=json.loads(gdf.to_json()),
-            locations="comuna",
+            geojson=comunas_geojson,
+            locations="Comuna",
             color="Cantidad",
             center={"lat": -34.61, "lon": -58.44},
             zoom=10.3,
