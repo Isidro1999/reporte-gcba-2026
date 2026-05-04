@@ -217,8 +217,11 @@ def load_bandas_catalogo():
 df_bandas = load_bandas_catalogo()
 
 df = load_data(DATA_PATH.stat().st_mtime)
-df = df.dropna(subset=["Eje", "Sub Eje", "Tema", "Subtema"])
-df = df[~df["Eje"].astype(str).str.strip().str.lower().isin(["nan", "none", ""])]
+
+df["Eje"] = df["Eje"].replace(["nan", "None", ""], "Sin eje")
+df["Sub Eje"] = df["Sub Eje"].replace(["nan", "None", ""], "Sin subeje")
+df["Tema"] = df["Tema"].replace(["nan", "None", ""], "Sin tema")
+df["Subtema"] = df["Subtema"].replace(["nan", "None", ""], "Sin subtema")
 
 MAPEO_EJES = {
     "Cuidado y Bien Público": "Cuidado",
