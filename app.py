@@ -261,11 +261,11 @@ else:
 
 df["Eje_display"] = df["Eje"].map(MAPEO_EJES).fillna(df["Eje"])
 
-ejes_disp = sorted(df["Eje_display"].unique())
+ejes_disp = sorted(df["Eje_display"].dropna().astype(str).unique())
 ejes_sel = st.sidebar.multiselect("Ejes", ejes_disp, default=ejes_disp)
 
 
-tipos_disp = sorted(df["Tipo de material"].unique())
+tipos_disp = sorted(df["Tipo de material"].dropna().astype(str).unique())
 tipos_sel = st.sidebar.multiselect("Tipo de material", tipos_disp, default=tipos_disp)
 
 subtipos_disp = sorted(df.explode("Subtipos_material")["Subtipos_material"].dropna().unique())
