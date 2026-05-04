@@ -3,6 +3,15 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import os
+from pathlib import Path
+
+# =====================================================
+# 0. CONFIG STREAMLIT
+# =====================================================
+st.set_page_config(
+    page_title="Reporte Analítico CMS GCBA",
+    layout="wide"
+)
 
 def check_password():
     # Cambiá esta pass por la tuya momentáneamente
@@ -55,16 +64,6 @@ def aplicar_tema_plotly(fig):
     fig.update_layout(colorway=PALETA_PLOTLY)
 
     return fig
-
-
-# =====================================================
-# 0. CONFIG STREAMLIT
-# =====================================================
-st.set_page_config(
-    page_title="Reporte Analítico CMS GCBA",
-    layout="wide"
-)
-
 
 
 st.markdown("""
@@ -156,13 +155,11 @@ div[data-testid="stTabs"] span {
 # 1. CARGA Y PREPARACIÓN DE DATOS
 # =====================================================
 
-from pathlib import Path
-
-DATA_PATH = Path("data/df_final.csv")
+DATA_PATH = Path(__file__).resolve().parent / "data" / "df_final.csv"
 
 @st.cache_data
-def load_data(file_mtime):
-    df = pd.read_csv(DATA_PATH)
+def load_data(file_path, file_mtime):
+    df = pd.read_csv(file_path)
 
     df["Eje"] = df["Eje"].astype(str).str.strip()
     df["Sub Eje"] = df["Sub Eje"].astype(str).str.strip()
@@ -217,7 +214,7 @@ def load_bandas_catalogo():
 
 df_bandas = load_bandas_catalogo()
 
-df = load_data()
+df = load_data(str(DATA_PATH), DATA_PATH.stat().st_mtime)
 df = df.dropna(subset=["Eje", "Sub Eje", "Tema", "Subtema"])
 df = df[~df["Eje"].astype(str).str.strip().str.lower().isin(["nan", "none", ""])]
 
@@ -251,7 +248,10 @@ rango_fechas = st.sidebar.date_input(
     max_value=fecha_fin_default
 )
 
-inicio, fin = rango_fechas
+if isinstance(rango_fechas, tuple) and len(rango_fechas) == 2:
+    inicio, fin = rango_fechas
+else:
+    inicio, fin = fecha_inicio_default, fecha_fin_default
 
 
 df["Eje_display"] = df["Eje"].map(MAPEO_EJES).fillna(df["Eje"])
