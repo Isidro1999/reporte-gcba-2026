@@ -240,7 +240,7 @@ st.sidebar.header("Filtros")
 
 from datetime import date
 
-fecha_inicio_default = date(2024, 1, 1)
+fecha_inicio_default = date(2020, 1, 1)
 fecha_fin_default = date.today()
 
 rango_fechas = st.sidebar.date_input(
@@ -276,6 +276,35 @@ mask = (
 )
 
 df_filtrado = df[mask].copy()
+st.write("DEBUG 1 - total df:", len(df))
+
+solo_fecha = df[
+    (df["Fecha"].dt.date >= inicio) &
+    (df["Fecha"].dt.date <= fin)
+]
+st.write("DEBUG 2 - solo fecha:", len(solo_fecha))
+
+solo_eje = df[df["Eje_display"].isin(ejes_sel)]
+st.write("DEBUG 3 - solo eje:", len(solo_eje))
+
+solo_tipo = df[df["Tipo de material"].isin(tipos_sel)]
+st.write("DEBUG 4 - solo tipo:", len(solo_tipo))
+
+st.write("DEBUG 5 - final filtrado:", len(df_filtrado))
+
+st.write("Tipos disponibles:", sorted(df["Tipo de material"].dropna().unique()))
+st.write("Tipos seleccionados:", tipos_sel)
+
+st.write("Fecha mínima:", df["Fecha"].min())
+st.write("Fecha máxima:", df["Fecha"].max())
+st.write("DEBUG total df:", len(df))
+st.write("DEBUG rango fechas:", inicio, fin)
+st.write("DEBUG por fecha:", len(df[(df["Fecha"].dt.date >= inicio) & (df["Fecha"].dt.date <= fin)]))
+st.write("DEBUG por eje:", len(df[df["Eje_display"].isin(ejes_sel)]))
+st.write("DEBUG por tipo:", len(df[df["Tipo de material"].isin(tipos_sel)]))
+st.write("DEBUG final df_filtrado:", len(df_filtrado))
+st.write("DEBUG tipos disponibles:", sorted(df["Tipo de material"].dropna().unique()))
+st.write("DEBUG tipos seleccionados:", tipos_sel)
 df_filtrado["Eje_display"] = (
     df_filtrado["Eje"]
     .map(MAPEO_EJES)
