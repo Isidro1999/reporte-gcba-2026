@@ -172,7 +172,6 @@ def load_data(file_mtime):
     df["Comuna"] = pd.to_numeric(df["Comuna"], errors="coerce")
     df["Tipo de material"] = df["Tipo de material"].astype(str).str.strip()
 
-    df = df[df["Comuna"].between(1, 15)]
 
     meses = {"enero":1,"febrero":2,"marzo":3,"abril":4,"mayo":5,"junio":6,
              "julio":7,"agosto":8,"septiembre":9,"setiembre":9,"octubre":10,
@@ -218,9 +217,6 @@ def load_bandas_catalogo():
 df_bandas = load_bandas_catalogo()
 
 df = load_data(DATA_PATH.stat().st_mtime)
-st.warning("VERSION DEBUG: fix comuna 2026-05-04 16:20")
-st.write("Filas df después de load_data:", len(df))
-st.write("Filas df_filtrado:", len(df_filtrado))
 df = df.dropna(subset=["Eje", "Sub Eje", "Tema", "Subtema"])
 df = df[~df["Eje"].astype(str).str.strip().str.lower().isin(["nan", "none", ""])]
 
@@ -254,7 +250,10 @@ rango_fechas = st.sidebar.date_input(
     max_value=fecha_fin_default
 )
 
-inicio, fin = rango_fechas
+if isinstance(rango_fechas, tuple) and len(rango_fechas) == 2:
+    inicio, fin = rango_fechas
+else:
+    inicio, fin = fecha_inicio_default, fecha_fin_default
 
 
 df["Eje_display"] = df["Eje"].map(MAPEO_EJES).fillna(df["Eje"])
@@ -299,8 +298,10 @@ def kpi_html(titulo, valor):
 
 col1.markdown(kpi_html("Total materiales", f"{len(df_filtrado):,}".replace(",", ".")), unsafe_allow_html=True)
 col2.markdown(kpi_html("Ejes activos", df_filtrado["Eje"].nunique()), unsafe_allow_html=True)
-col3.markdown(kpi_html("Comunas alcanzadas", df_filtrado["Comuna"].nunique()), unsafe_allow_html=True)
-col4.markdown(kpi_html("Último mes cargado", df_filtrado["Fecha"].max().strftime("%m/%Y")), unsafe_allow_html=True)
+comunas_alcanzadas = df_filtrado.loc[df_filtrado["Comuna"].between(1, 15), "Comuna"].nunique()
+col3.markdown(kpi_html("Comunas alcanzadas", comunas_alcanzadas), unsafe_allow_html=True)
+ultimo_mes = df_filtrado["Fecha"].max().strftime("%m/%Y") if not df_filtrado.empty else "-"
+col4.markdown(kpi_html("Último mes cargado", ultimo_mes), unsafe_allow_html=True)
 
 
 
@@ -539,7 +540,12 @@ with tab_territorio:
         gdf = gpd.read_file("data/comunas_caba.geojson")
         gdf["comuna"] = gdf["comuna"].astype(int)
 
-        df_map = df_filtrado.groupby("Comuna").size().reset_index(name="Cantidad")
+        df_map = (
+            df_filtrado[df_filtrado["Comuna"].between(1, 15)]
+            .groupby("Comuna")
+            .size()
+            .reset_index(name="Cantidad")
+        )
         gdf_merge = gdf.merge(df_map, left_on="comuna", right_on="Comuna", how="left").fillna(0)
 
         fig_map = px.choropleth_mapbox(
@@ -561,7 +567,12 @@ with tab_territorio:
 
     st.subheader("Materiales por Comuna")
 
-    df_com = df_filtrado.groupby("Comuna").size().reset_index(name="Cantidad")
+    df_com = (
+        df_filtrado[df_filtrado["Comuna"].between(1, 15)]
+        .groupby("Comuna")
+        .size()
+        .reset_index(name="Cantidad")
+    )
     fig_com = aplicar_tema_plotly(px.bar(df_com, x="Comuna", y="Cantidad", text="Cantidad"))
     fig_com.update_xaxes(
     tickmode="linear",
@@ -612,8 +623,4 @@ with tab_insights:
         """)
     except:
         st.info("No hay suficientes datos para generar insights.")
-
-
-
-
 
