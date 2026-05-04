@@ -533,20 +533,21 @@ with tab_territorio:
 
     st.subheader("Mapa territorial")
 
-  import json
+    import json
 
-try:
-    with open("data/comunas_caba.geojson", "r", encoding="utf-8") as f:
+    try:
+     with open("data/comunas_caba.geojson", "r", encoding="utf-8") as f:
         comunas_geojson = json.load(f)
 
     df_map = df_filtrado[df_filtrado["Comuna"].between(1, 15)]
     df_map = df_map.groupby("Comuna").size().reset_index(name="Cantidad")
 
         fig_map = px.choropleth_mapbox(
-            gdf_merge,
+            df_map,
             geojson=comunas_geojson,
             locations="Comuna",
             color="Cantidad",
+            featureidkey="properties.comuna",
             center={"lat": -34.61, "lon": -58.44},
             zoom=10.3,
             mapbox_style="carto-positron"
