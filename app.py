@@ -415,48 +415,50 @@ with tab_resumen:
 # -----------------------------------------------------
 with tab_ejes:
 
-    # Sunburst
     st.subheader("Etiqueta --> Ruta --> Cantidad")
 
     df_h = df_filtrado[["Eje_display", "Sub Eje", "Tema", "Subtema"]].copy()
 
-    REEMPLAZOS = {
+    df_h["Eje_display"] = df_h["Eje_display"].fillna("Sin eje").astype(str).str.strip()
+    df_h["Sub Eje"] = df_h["Sub Eje"].fillna("Sin subeje").astype(str).str.strip()
+    df_h["Tema"] = df_h["Tema"].fillna("Sin tema").astype(str).str.strip()
+    df_h["Subtema"] = df_h["Subtema"].fillna("Sin subtema").astype(str).str.strip()
+
+    for col, fallback in {
         "Eje_display": "Sin eje",
         "Sub Eje": "Sin subeje",
         "Tema": "Sin tema",
         "Subtema": "Sin subtema"
-    }
+    }.items():
+        df_h[col] = df_h[col].replace(["", "nan", "NaN", "None"], fallback)
 
-    for col, label in REEMPLAZOS.items():
-        df_h[col] = (
-            df_h[col]
-            .astype(str)
-            .str.strip()
-            .replace(["nan", "NaN", "None", ""], label)
-        )
-
-    fig_sun = aplicar_tema_plotly(
-        px.sunburst(df_h, path=["Eje_display", "Sub Eje", "Tema", "Subtema"])
+    df_h = (
+        df_h
+        .groupby(["Eje_display", "Sub Eje", "Tema", "Subtema"])
+        .size()
+        .reset_index(name="Cantidad")
     )
 
-    
+    fig_sun = px.sunburst(
+        df_h,
+        path=["Eje_display", "Sub Eje", "Tema", "Subtema"],
+        values="Cantidad"
+    )
+
+    fig_sun = aplicar_tema_plotly(fig_sun)
 
     fig_sun.update_traces(
-    hovertemplate=
+        hovertemplate=
         "<b>Etiqueta:</b> %{label}<br>" +
         "<b>Ruta:</b> %{id}<br>" +
         "<b>Cantidad:</b> %{value}<br>" +
         "<extra></extra>"
-)
-
+    )
 
     fig_sun.update_layout(
-    height=550,                 # probá 800–950
-    margin=dict(l=10, r=10, t=10, b=10)
-)
-  
-
-
+        height=550,
+        margin=dict(l=10, r=10, t=10, b=10)
+    )
 
     st.plotly_chart(fig_sun, use_container_width=True)
 
